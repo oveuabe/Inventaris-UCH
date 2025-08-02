@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventaris Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body { font-family: sans-serif; padding: 1rem; background: #f0f0f0; }
+    #reader { width: 300px; margin: auto; }
+    .card { background: #fff; padding: 1rem; margin-top: 1rem; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .result { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+
+<h2>🔍 Scan QR Barang Inventaris</h2>
+<div id="reader"></div>
+
+<div class="card result" id="result">
+  <p>Silakan scan QR untuk melihat detail barang.</p>
+</div>
+
+<script>
+const SHEET_URL = "https://opensheet.elk.sh/1imNqraQgFRueRxGh2j4gDzOmeUoUlJvxUjqHNBSJZyg/Scanner";
+const html5QrCode = new Html5Qrcode("reader");
+
+function showResult(data) {
+  fetch(SHEET_URL)
+    .then(res => res.json())
+    .then(rows => {
+      const match = rows.find(row => row.Kode === data);
+      const resultDiv = document.getElementById("result");
+      if (match) {
+        resultDiv.innerHTML = `
+          <h3>📦 Data Barang:</h3>
+          <ul>
+            <li><strong>Nama:</strong> ${match["Nama Barang"]}</li>
+            <li><strong>Lokasi:</strong> ${match["Lokasi"]}</li>
+            <li><strong>Kode:</strong> ${match["Kode"]}</li>
+            <li><strong>Kondisi:</strong> ${match["Kondisi"]}</li>
+          </ul>
+          <p><a href="https://docs.google.com/spreadsheets/d/1imNqraQgFRueRxGh2j4gDzOmeUoUlJvxUjqHNBSJZyg/edit#gid=495440523" target="_blank">🔧 Ubah kondisi di Google Sheets</a></p>
+        `;
+      } else {
+        resultDiv.innerHTML = `<p style="color:red;">Kode <strong>${data}</strong> tidak ditemukan dalam data.</p>`;
+      }
+    })
+    .catch(err => {
+      document.getElementById("result").innerHTML = `<p style="color:red;">Gagal mengambil data: ${err}</p>`;
+    });
+}
+
+Html5Qrcode.getCameras().then(devices => {
+  if (devices && devices.length) {
+    const cameraId = devices[0].id;
+    html5QrCode.start(
+      cameraId,
+      { fps: 10, qrbox: 250 },
+      (decodedText, decodedResult) => {
+        html5QrCode.stop().then(() => showResult(decodedText));
+      },
+      (err) => {}
+    );
+  } else {
+    alert("Tidak ada kamera terdeteksi.");
+  }
+});
+</script>
+
+</body>
+</html>
