@@ -40,10 +40,6 @@ body {
   background-color: #125ba4;
 }
 
-.back {
-  margin-bottom: 20px;
-}
-
 .card {
   padding: 20px;
   background: #fdfdfd;
@@ -59,4 +55,3 @@ input[type="text"] {
   border: 1px solid #ccc;
   border-radius: 6px;
 }
-
