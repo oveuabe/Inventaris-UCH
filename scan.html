@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Scan Inventaris</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="btn back">← Kembali</a>
+    <div id="content"></div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const kode = params.get("id");
+    const apiURL = "https://script.google.com/macros/s/AKfycb....../exec"; // Ganti dengan Web App URL
+
+    const content = document.getElementById("content");
+
+    if (!kode) {
+      content.innerHTML = "<p>Silakan scan QR code dengan URL seperti <code>scan.html?id=KODE123</code></p>";
+    } else {
+      fetch(`${apiURL}?id=${kode}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) {
+            content.innerHTML = "<p>Data tidak ditemukan.</p>";
+            return;
+          }
+
+          content.innerHTML = `
+            <div class="card">
+              <p><strong>Nama:</strong> ${data.nama}</p>
+              <p><strong>Lokasi:</strong> ${data.lokasi}</p>
+              <p><strong>Kode:</strong> ${data.kode}</p>
+              <form id="form">
+                <label>Kondisi Baru:</label><br />
+                <input type="text" name="kondisi" value="${data.kondisi}" required />
+                <button class="btn" type="submit">Simpan</button>
+              </form>
+              <br/>
+              <img src="${data.qr}" width="150" />
+            </div>
+          `;
+
+          const form = document.getElementById("form");
+          form.addEventListener("submit", async e => {
+            e.preventDefault();
+            const kondisi = form.kondisi.value;
+            const res = await fetch(`${apiURL}?id=${data.kode}&kondisi=${encodeURIComponent(kondisi)}`, {
+              method: "POST"
+            });
+            alert("Kondisi diperbarui!");
+          });
+        });
+    }
+  </script>
+</body>
+</html>
