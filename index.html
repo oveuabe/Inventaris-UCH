@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QR Scanner Inventaris</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <h2>Scan QR Kode Barang</h2>
+
+  <video id="video" autoplay muted playsinline></video>
+  <canvas id="canvas"></canvas>
+
+  <div id="info">
+    <p>Arahkan kamera ke QR code...</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script>
+    const webAppUrl = "https://script.google.com/macros/s/AKfycbzbrtLtOmXODPKUUy3oxkqUCNuKeMna_uU4IGhUcLmsfsPC2cwdRQ-vcsuLnX8Ve_Op/exec";
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const info = document.getElementById('info');
+    const ctx = canvas.getContext('2d');
+    let lastScanned = null;
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = stream;
+        requestAnimationFrame(scanFrame);
+      } catch (err) {
+        info.innerHTML = '<p style="color:red;">Gagal akses kamera: ' + err + '</p>';
+      }
+    }
+
+    function scanFrame() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+        if (code && code.data !== lastScanned) {
+          lastScanned = code.data;
+          handleScannedCode(code.data);
+        }
+      }
+      requestAnimationFrame(scanFrame);
+    }
+
+    function handleScannedCode(kode) {
+      info.innerHTML = `<p><strong>Mendeteksi Kode:</strong> ${kode}</p><p>Memuat data...</p>`;
+
+      fetch(`${webAppUrl}?kode=${encodeURIComponent(kode)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) {
+            info.innerHTML = `<p style="color:red;">${data.error}</p>`;
+            return;
+          }
+
+          info.innerHTML = `
+            <p><strong>Nama:</strong> ${data.nama}</p>
+            <p><strong>Lokasi:</strong> ${data.lokasi}</p>
+            <p><strong>Kode:</strong> ${data.kode}</p>
+            <label for="kondisi">Ubah Kondisi:</label>
+            <select id="kondisi">
+              <option>Baik</option>
+              <option>Perlu Perawatan</option>
+              <option>Bisa Diperbaiki</option>
+              <option>Rusak Total</option>
+              <option>Dipindahkan</option>
+            </select>
+            <button onclick="submitKondisi('${data.kode}')">Simpan</button>
+          `;
+          document.getElementById('kondisi').value = data.kondisi;
+        });
+    }
+
+    function submitKondisi(kode) {
+      const kondisi = document.getElementById('kondisi').value;
+      fetch(webAppUrl, {
+        method: 'POST',
+        body: JSON.stringify({ kode, kondisi }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }).then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            info.innerHTML += `<p style="color:green;">Berhasil disimpan!</p>`;
+            setTimeout(() => {
+              lastScanned = null;
+              info.innerHTML = `<p>Arahkan kamera ke QR code...</p>`;
+            }, 2000);
+          } else {
+            info.innerHTML += `<p style="color:red;">Gagal: ${data.error}</p>`;
+          }
+        });
+    }
+
+    startCamera();
+  </script>
+</body>
+</html>
