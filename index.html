@@ -1,111 +1,476 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>QR Scanner Inventaris</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UCH Inventory</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js"></script>
+    <link rel="icon" href="icon.png">
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img
+          src="logo.png"
+          alt="UCH UTY Creative Hub Logo"
+          class="logo"
+          loading="lazy"
+        />
+        <p>Scan QR Code untuk Update Kondisi Barang Inventory</p>
+      </div>
 
-  <h2>Scan QR Kode Barang</h2>
+      <div class="main-content">
+        <div class="scanner-section">
+          <div id="scanner-container">
+            <video id="qr-video"></video>
+            <div class="scanner-overlay"></div>
+          </div>
 
-  <video id="video" autoplay muted playsinline></video>
-  <canvas id="canvas"></canvas>
+          <button id="start-scanner" class="btn">Mulai Scanner</button>
+          <button id="stop-scanner" class="btn" style="display: none">
+            Stop Scanner
+          </button>
 
-  <div id="info">
-    <p>Arahkan kamera ke QR code...</p>
-  </div>
+          <div class="manual-input">
+            <input
+              type="text"
+              id="manual-code"
+              placeholder="Atau masukkan kode manual (B-001-001)"
+            />
+            <button id="search-manual" class="btn">Cari</button>
+          </div>
+        </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-  <script>
-    const webAppUrl = "https://script.google.com/macros/s/AKfycbzbrtLtOmXODPKUUy3oxkqUCNuKeMna_uU4IGhUcLmsfsPC2cwdRQ-vcsuLnX8Ve_Op/exec";
+        <div id="alert-container"></div>
 
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const info = document.getElementById('info');
-    const ctx = canvas.getContext('2d');
-    let lastScanned = null;
+        <!-- Form untuk update kondisi -->
+        <form
+          id="update-form"
+          method="post"
+          action="https://script.google.com/macros/s/AKfycbza1UK0veAbPt9Mjh1F-NQgbRonatIJutehkLx4DXnIQzFCLFTqrNrOl8zJOhDHHLQF/exec"
+          target="hidden_iframe"
+        >
+          <input type="hidden" name="action" value="updateKondisiByKode" />
+          <input type="hidden" name="kode" id="form-kode" />
+          <input type="hidden" name="kondisi" id="form-kondisi" />
+          <input type="hidden" name="nama" id="form-nama" />
+          <input type="hidden" name="lokasi" id="form-lokasi" />
+        </form>
 
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        video.srcObject = stream;
-        requestAnimationFrame(scanFrame);
-      } catch (err) {
-        info.innerHTML = '<p style="color:red;">Gagal akses kamera: ' + err + '</p>';
-      }
-    }
+        <!-- Hidden iframe untuk handle form response -->
+        <iframe
+          name="hidden_iframe"
+          id="hidden_iframe"
+          style="display: none"
+        ></iframe>
 
-    function scanFrame() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        <div id="data-section" class="data-section">
+          <div class="data-card">
+            <h2>Data Barang</h2>
+            <div class="data-row">
+              <span class="data-label">Nama Barang:</span>
+              <span id="nama-barang" class="data-value">-</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">Lokasi:</span>
+              <span id="lokasi" class="data-value">-</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">Kode:</span>
+              <span id="kode" class="data-value">-</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">Kondisi Saat Ini:</span>
+              <span id="kondisi-current" class="data-value">-</span>
+            </div>
+          </div>
 
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, canvas.width, canvas.height);
+          <div class="kondisi-section">
+            <h3>Update Kondisi Barang</h3>
+            <div class="kondisi-options">
+              <div class="kondisi-option">
+                <input type="radio" id="baik" name="kondisi" value="Baik" />
+                <label for="baik">✅ Baik</label>
+              </div>
+              <div class="kondisi-option">
+                <input
+                  type="radio"
+                  id="perlu-perawatan"
+                  name="kondisi"
+                  value="Perlu Perawatan"
+                />
+                <label for="perlu-perawatan">⚠️ Perlu Perawatan</label>
+              </div>
+              <div class="kondisi-option">
+                <input
+                  type="radio"
+                  id="bisa-diperbaiki"
+                  name="kondisi"
+                  value="Bisa Diperbaiki"
+                />
+                <label for="bisa-diperbaiki">🔧 Bisa Diperbaiki</label>
+              </div>
+              <div class="kondisi-option">
+                <input
+                  type="radio"
+                  id="rusak-total"
+                  name="kondisi"
+                  value="Rusak Total"
+                />
+                <label for="rusak-total">❌ Rusak Total</label>
+              </div>
+              <div class="kondisi-option">
+                <input
+                  type="radio"
+                  id="dipindahkan"
+                  name="kondisi"
+                  value="Dipindahkan"
+                />
+                <label for="dipindahkan">📦 Dipindahkan</label>
+              </div>
+            </div>
+            <button id="update-kondisi" class="btn">Update Kondisi</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        if (code && code.data !== lastScanned) {
-          lastScanned = code.data;
-          handleScannedCode(code.data);
+    <script>
+      class QRInventoryScanner {
+        constructor() {
+          this.scanner = null;
+          this.currentItemData = null;
+          this.spreadsheetData = [];
+
+          this.SHEET_ID = "1imNqraQgFRueRxGh2j4gDzOmeUoUlJvxUjqHNBSJZyg";
+          this.SHEET_NAME = "Scanner";
+
+          this.initializeElements();
+          this.bindEvents();
+          this.loadSpreadsheetData();
         }
-      }
-      requestAnimationFrame(scanFrame);
-    }
 
-    function handleScannedCode(kode) {
-      info.innerHTML = `<p><strong>Mendeteksi Kode:</strong> ${kode}</p><p>Memuat data...</p>`;
+        initializeElements() {
+          this.video = document.getElementById("qr-video");
+          this.startBtn = document.getElementById("start-scanner");
+          this.stopBtn = document.getElementById("stop-scanner");
+          this.dataSection = document.getElementById("data-section");
+          this.alertContainer = document.getElementById("alert-container");
+          this.manualInput = document.getElementById("manual-code");
+          this.searchBtn = document.getElementById("search-manual");
+          this.updateBtn = document.getElementById("update-kondisi");
+          this.updateForm = document.getElementById("update-form");
+          this.hiddenIframe = document.getElementById("hidden_iframe");
+        }
 
-      fetch(`${webAppUrl}?kode=${encodeURIComponent(kode)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.error) {
-            info.innerHTML = `<p style="color:red;">${data.error}</p>`;
+        bindEvents() {
+          this.startBtn.addEventListener("click", () => this.startScanner());
+          this.stopBtn.addEventListener("click", () => this.stopScanner());
+          this.searchBtn.addEventListener("click", () => this.searchManual());
+          this.updateBtn.addEventListener("click", () => this.updateKondisi());
+
+          this.manualInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+              this.searchManual();
+            }
+          });
+
+          document
+            .querySelectorAll('input[name="kondisi"]')
+            .forEach((radio) => {
+              radio.addEventListener("change", (e) => {
+                document
+                  .querySelectorAll(".kondisi-option")
+                  .forEach((option) => {
+                    option.classList.remove("selected");
+                  });
+                e.target.closest(".kondisi-option").classList.add("selected");
+              });
+            });
+
+          this.hiddenIframe.addEventListener("load", () => {
+            this.handleFormResponse();
+          });
+        }
+
+        async startScanner() {
+          try {
+            this.startBtn.style.display = "none";
+            this.stopBtn.style.display = "inline-block";
+
+            this.scanner = new QrScanner(
+              this.video,
+              (result) => {
+                this.handleScanResult(result.data);
+              },
+              {
+                returnDetailedScanResult: true,
+                highlightScanRegion: true,
+                highlightCodeOutline: true,
+              },
+            );
+
+            await this.scanner.start();
+            this.showAlert(
+              "success",
+              "Scanner aktif! Arahkan kamera ke QR Code.",
+            );
+          } catch (error) {
+            this.showAlert(
+              "error",
+              "Gagal mengaktifkan kamera: " + error.message,
+            );
+            this.resetScannerButtons();
+          }
+        }
+
+        stopScanner() {
+          if (this.scanner) {
+            this.scanner.stop();
+            this.scanner.destroy();
+            this.scanner = null;
+          }
+          this.resetScannerButtons();
+          this.showAlert("info", "⏹️ Scanner dihentikan.");
+        }
+
+        resetScannerButtons() {
+          this.startBtn.style.display = "inline-block";
+          this.stopBtn.style.display = "none";
+        }
+
+        async searchManual() {
+          const code = this.manualInput.value.trim();
+          if (!code) {
+            this.showAlert("error", "Masukkan kode barang terlebih dahulu!");
+            return;
+          }
+          await this.handleScanResult(code);
+        }
+
+        async handleScanResult(qrData) {
+          this.showAlert("info", `Mencari data untuk kode: ${qrData}...`);
+
+          try {
+            const itemData = this.spreadsheetData.find(
+              (item) =>
+                item.kode &&
+                item.kode.trim().toLowerCase() === qrData.trim().toLowerCase(),
+            );
+
+            if (itemData) {
+              this.displayItemData(itemData);
+              this.currentItemData = itemData;
+              this.showAlert("success", "Data barang ditemukan!");
+
+              if (this.scanner) {
+                this.stopScanner();
+              }
+            } else {
+              this.showAlert(
+                "error",
+                "❌ Data tidak ditemukan untuk kode: " +
+                  qrData +
+                  ". Pastikan kode sudah benar atau refresh untuk memuat ulang data.",
+              );
+            }
+          } catch (error) {
+            this.showAlert("error", "Error: " + error.message);
+          }
+        }
+
+        async loadSpreadsheetData() {
+          this.showAlert("info", "Memuat data dari Google Spreadsheet...");
+
+          try {
+            const CSV_URL = `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${this.SHEET_NAME}`;
+
+            const response = await fetch(CSV_URL);
+            const csvText = await response.text();
+
+            this.spreadsheetData = this.parseCSVData(csvText);
+            this.showAlert(
+              "success",
+              `Data berhasil dimuat! ${this.spreadsheetData.length} item ditemukan.`,
+            );
+          } catch (error) {
+            this.showAlert(
+              "error",
+              "Gagal memuat data. Pastikan Sheet ID dan nama sheet sudah benar.",
+            );
+            console.error("Load data error:", error);
+          }
+        }
+
+        parseCSVData(csvText) {
+          const lines = csvText.split("\n");
+          const data = [];
+
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            const fields = this.parseCSVLine(line);
+
+            if (fields.length >= 4 && fields[2]) {
+              data.push({
+                nama: fields[0] || "",
+                lokasi: fields[1] || "",
+                kode: fields[2] || "",
+                kondisi: fields[3] || "",
+                rowIndex: i + 1,
+              });
+            }
+          }
+
+          return data;
+        }
+
+        parseCSVLine(line) {
+          const fields = [];
+          let current = "";
+          let inQuotes = false;
+
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === "," && !inQuotes) {
+              fields.push(current.trim());
+              current = "";
+            } else {
+              current += char;
+            }
+          }
+
+          fields.push(current.trim());
+          return fields;
+        }
+
+        displayItemData(data) {
+          document.getElementById("nama-barang").textContent = data.nama;
+          document.getElementById("lokasi").textContent = data.lokasi;
+          document.getElementById("kode").textContent = data.kode;
+          document.getElementById("kondisi-current").textContent = data.kondisi;
+
+          // Reset radio buttons
+          document
+            .querySelectorAll('input[name="kondisi"]')
+            .forEach((radio) => {
+              radio.checked = false;
+            });
+          document.querySelectorAll(".kondisi-option").forEach((option) => {
+            option.classList.remove("selected");
+          });
+
+          this.dataSection.classList.add("active");
+        }
+
+        updateKondisi() {
+          const selectedKondisi = document.querySelector(
+            'input[name="kondisi"]:checked',
+          );
+
+          if (!selectedKondisi) {
+            this.showAlert("error", "Pilih kondisi baru terlebih dahulu!");
             return;
           }
 
-          info.innerHTML = `
-            <p><strong>Nama:</strong> ${data.nama}</p>
-            <p><strong>Lokasi:</strong> ${data.lokasi}</p>
-            <p><strong>Kode:</strong> ${data.kode}</p>
-            <label for="kondisi">Ubah Kondisi:</label>
-            <select id="kondisi">
-              <option>Baik</option>
-              <option>Perlu Perawatan</option>
-              <option>Bisa Diperbaiki</option>
-              <option>Rusak Total</option>
-              <option>Dipindahkan</option>
-            </select>
-            <button onclick="submitKondisi('${data.kode}')">Simpan</button>
-          `;
-          document.getElementById('kondisi').value = data.kondisi;
-        });
-    }
-
-    function submitKondisi(kode) {
-      const kondisi = document.getElementById('kondisi').value;
-      fetch(webAppUrl, {
-        method: 'POST',
-        body: JSON.stringify({ kode, kondisi }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }).then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            info.innerHTML += `<p style="color:green;">Berhasil disimpan!</p>`;
-            setTimeout(() => {
-              lastScanned = null;
-              info.innerHTML = `<p>Arahkan kamera ke QR code...</p>`;
-            }, 2000);
-          } else {
-            info.innerHTML += `<p style="color:red;">Gagal: ${data.error}</p>`;
+          if (!this.currentItemData) {
+            this.showAlert(
+              "error",
+              "Tidak ada data yang dipilih untuk diupdate!",
+            );
+            return;
           }
-        });
-    }
 
-    startCamera();
-  </script>
-</body>
+          const newKondisi = selectedKondisi.value;
+
+          // Validasi kondisi
+          const validKondisi = [
+            "Baik",
+            "Perlu Perawatan",
+            "Bisa Diperbaiki",
+            "Rusak Total",
+            "Dipindahkan",
+          ];
+          if (!validKondisi.includes(newKondisi)) {
+            this.showAlert("error", "Kondisi tidak valid!");
+            return;
+          }
+
+          document.getElementById("form-kode").value =
+            this.currentItemData.kode;
+          document.getElementById("form-kondisi").value = newKondisi;
+          document.getElementById("form-nama").value =
+            this.currentItemData.nama;
+          document.getElementById("form-lokasi").value =
+            this.currentItemData.lokasi;
+
+          this.updateBtn.innerHTML =
+            '<span class="loading"></span> Updating...';
+          this.updateBtn.disabled = true;
+
+          this.pendingKondisi = newKondisi;
+
+          this.updateForm.submit();
+        }
+
+        handleFormResponse() {
+          setTimeout(() => {
+            if (this.pendingKondisi && this.currentItemData) {
+              const itemIndex = this.spreadsheetData.findIndex(
+                (item) => item.rowIndex === this.currentItemData.rowIndex,
+              );
+              if (itemIndex !== -1) {
+                this.spreadsheetData[itemIndex].kondisi = this.pendingKondisi;
+              }
+
+              this.currentItemData.kondisi = this.pendingKondisi;
+
+              document.getElementById("kondisi-current").textContent =
+                this.pendingKondisi;
+
+              this.showAlert(
+                "success",
+                `✅ Kondisi berhasil diupdate menjadi: ${this.pendingKondisi}`,
+              );
+
+              document
+                .querySelectorAll('input[name="kondisi"]')
+                .forEach((radio) => {
+                  radio.checked = false;
+                });
+              document.querySelectorAll(".kondisi-option").forEach((option) => {
+                option.classList.remove("selected");
+              });
+
+              this.pendingKondisi = null;
+            }
+
+            this.updateBtn.innerHTML = "💾 Update Kondisi";
+            this.updateBtn.disabled = false;
+          }, 1000);
+        }
+
+        showAlert(type, message) {
+          this.alertContainer.innerHTML = `
+            <div class="alert alert-${type}">
+              ${message}
+            </div>
+          `;
+
+          setTimeout(() => {
+            this.alertContainer.innerHTML = "";
+          }, 5000);
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        new QRInventoryScanner();
+      });
+    </script>
+  </body>
 </html>
