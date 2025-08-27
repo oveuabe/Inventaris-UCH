@@ -34,10 +34,10 @@ body {
 }
 
 .logo {
-  max-width: 100%;
-  height: auto;
-  margin: 0 auto 15px;
-  display: block;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:calc(var(--spacing)*6);
 }
 
 .header h1 {
@@ -325,4 +325,5 @@ body {
 #update-form {
   display: none;
 }
+
 
