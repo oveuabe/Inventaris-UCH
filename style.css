@@ -34,7 +34,7 @@ body {
 }
 
 .logo {
-  width: auto;
+  max-width: 100%;
   height: auto;
   margin: 0 auto 15px;
   display: block;
@@ -325,3 +325,4 @@ body {
 #update-form {
   display: none;
 }
+
