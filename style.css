@@ -15,6 +15,11 @@ body {
   justify-content: center;
 }
 
+img {
+  max-width:100%;
+  height:auto
+}
+
 .container {
   max-width: 800px;
   width: 100%;
@@ -325,5 +330,6 @@ body {
 #update-form {
   display: none;
 }
+
 
 
